@@ -1,5 +1,6 @@
 import PollCard from "@/components/polls/PollCard";
 import Link from "next/link";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Mock data matching the screenshot
 const mockPolls = [
@@ -31,7 +32,8 @@ const mockPolls = [
 
 export default function PollsPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <ProtectedRoute>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">My Polls</h1>
         <Link
@@ -67,6 +69,7 @@ export default function PollsPage() {
           </Link>
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
