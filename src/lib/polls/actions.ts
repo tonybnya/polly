@@ -93,12 +93,16 @@ export async function deletePoll(pollId: string) {
   // Verify the poll belongs to the user
   const { data: poll, error: pollError } = await supabase
     .from("polls")
-    .select("id")
+    .select("id, created_by")
     .eq("id", pollId)
     .eq("created_by", user.id)
     .single();
 
-  if (pollError || !poll) {
+  if (pollError) {
+    throw new Error(`Database error: ${pollError.message}`);
+  }
+
+  if (!poll) {
     throw new Error("Poll not found or you don't have permission to delete it");
   }
 
@@ -109,7 +113,7 @@ export async function deletePoll(pollId: string) {
     .eq("id", pollId);
 
   if (deleteError) {
-    throw new Error(deleteError.message);
+    throw new Error(`Failed to delete poll: ${deleteError.message}`);
   }
 
   revalidatePath("/polls");
@@ -219,45 +223,61 @@ export async function updatePoll(pollId: string, formData: FormData) {
     throw new Error("At least two unique options are required");
   }
 
-  // Update poll
-  const { error: updatePollError } = await supabase
-    .from("polls")
-    .update({
-      title,
-      description: description || null,
-    })
-    .eq("id", pollId);
+  try {
+    // Update poll metadata
+    const { error: updatePollError } = await supabase
+      .from("polls")
+      .update({
+        title,
+        description: description || null,
+      })
+      .eq("id", pollId);
 
-  if (updatePollError) {
-    throw new Error(updatePollError.message);
+    if (updatePollError) {
+      throw new Error(updatePollError.message);
+    }
+
+    // Delete votes first (must be done before deleting options due to FK constraint)
+    const { error: deleteVotesError } = await supabase
+      .from("votes")
+      .delete()
+      .eq("poll_id", pollId);
+
+    if (deleteVotesError) {
+      throw new Error(`Failed to delete existing votes: ${deleteVotesError.message}`);
+    }
+
+    // Delete ALL existing options for this poll
+    const { error: deleteOptionsError } = await supabase
+      .from("poll_options")
+      .delete()
+      .eq("poll_id", pollId);
+
+    if (deleteOptionsError) {
+      throw new Error(`Failed to delete existing options: ${deleteOptionsError.message}`);
+    }
+
+    // Create new options
+    const newOptions = distinctOptions.map((text, index) => ({
+      poll_id: pollId,
+      text: text.trim(),
+      position: index,
+    }));
+
+    const { error: insertOptionsError } = await supabase
+      .from("poll_options")
+      .insert(newOptions);
+
+    if (insertOptionsError) {
+      throw new Error(`Failed to create new options: ${insertOptionsError.message}`);
+    }
+
+    // Clear cache and redirect
+    revalidatePath(`/polls/${pollId}`);
+    revalidatePath("/polls");
+    redirect(`/polls/${pollId}`);
+  } catch (error) {
+    // If anything fails, re-throw the error
+    throw error;
   }
-
-  // Delete existing options
-  const { error: deleteOptionsError } = await supabase
-    .from("poll_options")
-    .delete()
-    .eq("poll_id", pollId);
-
-  if (deleteOptionsError) {
-    throw new Error(deleteOptionsError.message);
-  }
-
-  // Create new poll options
-  const { error: insertOptionsError } = await supabase
-    .from("poll_options")
-    .insert(
-      distinctOptions.map((text, index) => ({
-        poll_id: pollId,
-        text,
-        position: index,
-      }))
-    );
-
-  if (insertOptionsError) {
-    throw new Error(insertOptionsError.message);
-  }
-
-  revalidatePath(`/polls/${pollId}`);
-  revalidatePath("/polls");
-  redirect(`/polls/${pollId}`);
 }

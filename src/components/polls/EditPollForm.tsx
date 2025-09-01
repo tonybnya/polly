@@ -52,6 +52,11 @@ export default function EditPollForm({ poll }: EditPollFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Prevent double submission
+    if (isSubmitting) {
+      return;
+    }
+    
     if (!title.trim()) {
       toast.error("Poll title is required");
       return;
@@ -76,7 +81,7 @@ export default function EditPollForm({ poll }: EditPollFormProps) {
       formData.append("title", title);
       formData.append("description", description);
       
-      validOptions.forEach(option => {
+      uniqueOptions.forEach(option => {
         formData.append("options", option);
       });
 
