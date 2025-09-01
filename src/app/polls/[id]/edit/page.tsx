@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 
 interface EditPollPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function EditPollPage({ params }: EditPollPageProps) {
-  const supabase = createServerSupabaseClient();
+  const resolvedParams = await params;
+  const supabase = await createServerSupabaseClient();
   
   const {
     data: { user },
@@ -27,7 +28,7 @@ export default async function EditPollPage({ params }: EditPollPageProps) {
       *,
       poll_options (*)
     `)
-    .eq("id", params.id)
+    .eq("id", resolvedParams.id)
     .eq("created_by", user.id)
     .single();
 
@@ -72,7 +73,7 @@ export default async function EditPollPage({ params }: EditPollPageProps) {
         <div className="space-y-2">
           <label className="font-medium">Options</label>
           <div className="space-y-3">
-            {poll.poll_options?.map((option: any, index: number) => (
+            {poll.poll_options?.map((option: { id: string; text: string }, index: number) => (
               <div key={option.id} className="flex gap-2 items-center">
                 <Input
                   placeholder={`Option ${index + 1}`}

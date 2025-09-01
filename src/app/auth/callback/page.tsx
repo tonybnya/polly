@@ -1,15 +1,16 @@
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createActionSupabaseClient } from '@/lib/supabase-actions'
 import { redirect } from 'next/navigation'
 
 export default async function AuthCallback({
   searchParams,
 }: {
-  searchParams: { code?: string }
+  searchParams: Promise<{ code?: string }>
 }) {
-  const code = searchParams.code
+  const resolvedSearchParams = await searchParams;
+  const code = resolvedSearchParams.code
 
   if (code) {
-    const supabase = createServerSupabaseClient()
+    const supabase = await createActionSupabaseClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {

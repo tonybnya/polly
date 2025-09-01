@@ -2,7 +2,7 @@ import PollCard from "@/components/polls/PollCard";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { redirect } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import SuccessNotification from "@/components/polls/SuccessNotification";
@@ -26,11 +26,11 @@ export default async function PollsPage() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
+        set() {
+          // Cannot set cookies in Server Components
         },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+        remove() {
+          // Cannot remove cookies in Server Components
         },
       },
     }

@@ -1,10 +1,10 @@
 'use server'
 
 import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 
-export function createServerSupabaseClient() {
-  const cookieStore = cookies();
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,11 +14,11 @@ export function createServerSupabaseClient() {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
+        set() {
+          // Cannot set cookies in Server Components
         },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
+        remove() {
+          // Cannot remove cookies in Server Components
         },
       },
     }

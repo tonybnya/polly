@@ -2,28 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createActionSupabaseClient } from "@/lib/supabase-actions";
 
 export async function createPoll(formData: FormData) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
-        },
-      },
-    }
-  );
+  const supabase = await createActionSupabaseClient();
 
   const {
     data: { user },
@@ -93,24 +75,7 @@ export async function createPoll(formData: FormData) {
 }
 
 export async function deletePoll(pollId: string) {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options });
-        },
-      },
-    }
-  );
+  const supabase = await createActionSupabaseClient();
 
   const {
     data: { user },
@@ -148,5 +113,58 @@ export async function deletePoll(pollId: string) {
   }
 
   revalidatePath("/polls");
+  return { success: true };
+}
+
+export async function voteOnPoll(pollId: string, optionId: string) {
+  const supabase = await createActionSupabaseClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw new Error(userError.message);
+  }
+
+  if (!user) {
+    throw new Error("You must be logged in to vote");
+  }
+
+  // Check if user has already voted on this poll
+  const { data: existingVote } = await supabase
+    .from("votes")
+    .select("id")
+    .eq("poll_id", pollId)
+    .eq("voter_id", user.id)
+    .single();
+
+  if (existingVote) {
+    // Update existing vote
+    const { error: updateError } = await supabase
+      .from("votes")
+      .update({ option_id: optionId })
+      .eq("id", existingVote.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+  } else {
+    // Create new vote
+    const { error: insertError } = await supabase
+      .from("votes")
+      .insert({
+        poll_id: pollId,
+        option_id: optionId,
+        voter_id: user.id,
+      });
+
+    if (insertError) {
+      throw new Error(insertError.message);
+    }
+  }
+
+  revalidatePath(`/polls/${pollId}`);
   return { success: true };
 }
