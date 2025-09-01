@@ -1,6 +1,11 @@
+"use client";
+
 import PollCard from "@/components/polls/PollCard";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 // Mock data matching the screenshot
 const mockPolls = [
@@ -31,6 +36,16 @@ const mockPolls = [
 ];
 
 export default function PollsPage() {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      toast.success("Poll created successfully!", {
+        description: "Your poll has been created and is ready for voting.",
+      });
+    }
+  }, [searchParams]);
+
   return (
     <ProtectedRoute>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
