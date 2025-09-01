@@ -4,7 +4,6 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { redirect } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
 import SuccessNotification from "@/components/polls/SuccessNotification";
 
 interface Poll {
@@ -69,7 +68,7 @@ export default async function PollsPage() {
     question: poll.description || poll.title,
     optionsCount: poll.poll_options?.length || 0,
     totalVotes: poll.votes?.length || 0,
-    createdAt: formatDistanceToNow(new Date(poll.created_at), { addSuffix: true }),
+    createdAt: poll.created_at, // Pass raw ISO date string
   })) || [];
 
   return (

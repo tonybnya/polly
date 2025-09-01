@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { deletePoll } from "@/lib/polls/actions";
+import { formatDistanceToNow } from "date-fns";
 
 interface PollCardProps {
   id: string;
@@ -12,7 +13,7 @@ interface PollCardProps {
   question: string;
   optionsCount: number;
   totalVotes: number;
-  createdAt: string;
+  createdAt: string; // ISO date string
 }
 
 export default function PollCard({
@@ -24,10 +25,27 @@ export default function PollCard({
   createdAt,
 }: PollCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [formattedDate, setFormattedDate] = useState<string>(createdAt);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Format date on client side to avoid hydration mismatch
+    try {
+      const formatted = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
+      setFormattedDate(formatted);
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      // Fallback to original date string
+      setFormattedDate(new Date(createdAt).toLocaleDateString());
+    }
+  }, [createdAt]);
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (typeof window === 'undefined') return;
     
     if (!confirm("Are you sure you want to delete this poll? This action cannot be undone.")) {
       return;
@@ -50,7 +68,10 @@ export default function PollCard({
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    window.location.href = `/polls/${id}/edit`;
+    // Use Next.js router for better navigation
+    if (typeof window !== 'undefined') {
+      window.location.href = `/polls/${id}/edit`;
+    }
   };
 
   return (
@@ -69,7 +90,7 @@ export default function PollCard({
         </div>
         
         <div className="text-xs text-gray-400">
-          Created on {createdAt}
+          {isMounted ? `Created ${formattedDate}` : `Created on ${new Date(createdAt).toLocaleDateString()}`}
         </div>
       </Link>
       
